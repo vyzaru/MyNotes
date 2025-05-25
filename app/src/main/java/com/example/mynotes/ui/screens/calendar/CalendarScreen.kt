@@ -43,7 +43,12 @@ fun CalendarScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            navController.navigate(Screen.NoteDetail.createRoute(-1))
+                            navController.navigate(
+                                Screen.NoteDetail.createRoute(
+                                    noteId = -1,
+                                    date = selectedDate
+                                )
+                            )
                         }
                     ) {
                         Icon(Icons.Default.Add, stringResource(R.string.add_note))
@@ -55,24 +60,28 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .padding(padding)
-                .padding(16.dp)
+                .fillMaxSize()
         ) {
             CalendarWidget(
-                selectedDate = selectedDate,
-                onDateSelected = { selectedDate = it }
+                onDateSelected = { date ->
+                    selectedDate = date
+                }
             )
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            val selectedDateTime = Instant.fromEpochMilliseconds(selectedDate)
-                .toLocalDateTime(TimeZone.currentSystemDefault())
-            
-            val formattedDate = "${selectedDateTime.date.dayOfMonth.toString().padStart(2, '0')}.${selectedDateTime.date.monthNumber.toString().padStart(2, '0')}.${selectedDateTime.date.year}"
-
             Text(
-                text = stringResource(R.string.notes_for_date, formattedDate),
-                style = MaterialTheme.typography.titleMedium
+                text = stringResource(
+                    R.string.notes_for_date,
+                    Instant.fromEpochMilliseconds(selectedDate)
+                        .toLocalDateTime(TimeZone.currentSystemDefault())
+                        .date.let { "${it.dayOfMonth}.${it.monthNumber}.${it.year}" }
+                ),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
+
+            Spacer(modifier = Modifier.height(8.dp))
 
             val dailyNotes = notes.filter { note ->
                 val noteDateTime = Instant.fromEpochMilliseconds(note.scheduledDate ?: note.createdAt)
@@ -87,7 +96,9 @@ fun CalendarScreen(
 
             if (dailyNotes.isEmpty()) {
                 Box(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(stringResource(R.string.no_notes_for_date))
@@ -95,6 +106,7 @@ fun CalendarScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(

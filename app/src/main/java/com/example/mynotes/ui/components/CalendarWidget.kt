@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,26 +22,54 @@ import java.util.*
 
 @Composable
 fun CalendarWidget(
-    selectedDate: Long,
     onDateSelected: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val calendar = remember { Calendar.getInstance() }
-    calendar.timeInMillis = selectedDate
+    var selectedDate by remember { mutableStateOf(calendar.timeInMillis) }
+    var currentMonth by remember { mutableStateOf(calendar.get(Calendar.MONTH)) }
+    var currentYear by remember { mutableStateOf(calendar.get(Calendar.YEAR)) }
 
-    val currentMonth by remember { mutableStateOf(calendar.get(Calendar.MONTH)) }
-    val currentYear by remember { mutableStateOf(calendar.get(Calendar.YEAR)) }
-
-    Column(modifier = modifier) {
+    Column(modifier = modifier.padding(16.dp)) {
         // Заголовок с месяцем и годом
-        Text(
-            text = "${getMonthName(currentMonth)} $currentYear",
-            style = MaterialTheme.typography.titleMedium,
-            modifier = Modifier.fillMaxWidth()
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = {
+                    calendar.set(currentYear, currentMonth - 1, 1)
+                    currentMonth = calendar.get(Calendar.MONTH)
+                    currentYear = calendar.get(Calendar.YEAR)
+                }
+            ) {
+                Icon(Icons.Default.ChevronLeft, contentDescription = "Previous month")
+            }
+            
+            Text(
+                text = "${getMonthName(currentMonth)} $currentYear",
+                style = MaterialTheme.typography.titleMedium
+            )
+            
+            IconButton(
+                onClick = {
+                    calendar.set(currentYear, currentMonth + 1, 1)
+                    currentMonth = calendar.get(Calendar.MONTH)
+                    currentYear = calendar.get(Calendar.YEAR)
+                }
+            ) {
+                Icon(Icons.Default.ChevronRight, contentDescription = "Next month")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         // Дни недели
-        Row {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             listOf(
                 R.string.monday_short,
                 R.string.tuesday_short,
@@ -50,20 +81,24 @@ fun CalendarWidget(
             ).forEach { dayRes ->
                 Text(
                     text = stringResource(dayRes),
+                    style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.weight(1f),
                     textAlign = TextAlign.Center
                 )
             }
         }
 
+        Spacer(modifier = Modifier.height(8.dp))
+
         // Дни месяца
         val daysInMonth = getDaysInMonth(currentMonth, currentYear)
         val firstDayOfWeek = getFirstDayOfWeek(currentMonth, currentYear)
         val days = (1..daysInMonth).map { day ->
+            calendar.set(currentYear, currentMonth, day)
             CalendarDay(
                 day = day,
-                date = createDate(day, currentMonth, currentYear),
-                isSelected = false
+                date = calendar.timeInMillis,
+                isSelected = calendar.timeInMillis == selectedDate
             )
         }
         val emptyDays = (1 until firstDayOfWeek).map { null }
@@ -71,17 +106,20 @@ fun CalendarWidget(
 
         LazyVerticalGrid(
             columns = GridCells.Fixed(7),
-            modifier = Modifier.height(200.dp)
+            modifier = Modifier.height(240.dp)
         ) {
             items(allDays) { calendarDay ->
                 if (calendarDay != null) {
                     DayCell(
                         day = calendarDay.day,
-                        isSelected = isSameDay(calendarDay.date, selectedDate),
-                        onClick = { onDateSelected(calendarDay.date) }
+                        isSelected = calendarDay.isSelected,
+                        onClick = {
+                            selectedDate = calendarDay.date
+                            onDateSelected(calendarDay.date)
+                        }
                     )
                 } else {
-                    Spacer(modifier = Modifier.size(40.dp))
+                    Box(modifier = Modifier.size(40.dp))
                 }
             }
         }
@@ -110,11 +148,13 @@ private fun DayCell(
             ),
         contentAlignment = Alignment.Center
     ) {
-        Text(text = day.toString())
+        Text(
+            text = day.toString(),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }
 
-// Вспомогательные функции
 @Composable
 private fun getMonthName(month: Int): String {
     return stringResource(
@@ -146,18 +186,4 @@ private fun getFirstDayOfWeek(month: Int, year: Int): Int {
     val calendar = Calendar.getInstance()
     calendar.set(year, month, 1)
     return calendar.get(Calendar.DAY_OF_WEEK)
-}
-
-private fun createDate(day: Int, month: Int, year: Int): Long {
-    val calendar = Calendar.getInstance()
-    calendar.set(year, month, day)
-    return calendar.timeInMillis
-}
-
-private fun isSameDay(date1: Long, date2: Long): Boolean {
-    val cal1 = Calendar.getInstance().apply { timeInMillis = date1 }
-    val cal2 = Calendar.getInstance().apply { timeInMillis = date2 }
-    return cal1.get(Calendar.YEAR) == cal2.get(Calendar.YEAR) &&
-            cal1.get(Calendar.MONTH) == cal2.get(Calendar.MONTH) &&
-            cal1.get(Calendar.DAY_OF_MONTH) == cal2.get(Calendar.DAY_OF_MONTH)
 }

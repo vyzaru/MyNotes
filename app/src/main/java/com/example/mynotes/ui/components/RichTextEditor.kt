@@ -33,49 +33,68 @@ fun RichTextEditor(
     var isItalic by remember { mutableStateOf(false) }
     var isBulletPoint by remember { mutableStateOf(false) }
     var showColorPicker by remember { mutableStateOf(false) }
-    var textFieldValue by remember(value) { mutableStateOf(TextFieldValue(value)) }
+    var textFieldValue by remember { mutableStateOf(TextFieldValue(value)) }
 
     LaunchedEffect(value) {
         if (value != textFieldValue.text) {
-            textFieldValue = TextFieldValue(value)
+            textFieldValue = textFieldValue.copy(text = value)
         }
     }
 
-    fun handleBulletList(text: String, cursorPosition: Int): Pair<String, Int> {
-        val lines = text.split("\n")
-        var currentPos = 0
-        var newCursorPosition = cursorPosition
-        val newLines = mutableListOf<String>()
+    fun getCurrentLineStart(text: String, cursorPosition: Int): Int {
+        return text.lastIndexOf('\n', cursorPosition - 1).let { if (it == -1) 0 else it + 1 }
+    }
+
+    fun getCurrentLineEnd(text: String, cursorPosition: Int): Int {
+        return text.indexOf('\n', cursorPosition).let { if (it == -1) text.length else it }
+    }
+
+    fun isCurrentLineBulleted(text: String, cursorPosition: Int): Boolean {
+        val lineStart = getCurrentLineStart(text, cursorPosition)
+        return text.substring(lineStart).trimStart().startsWith("• ")
+    }
+
+    fun toggleBulletForCurrentLine(text: String, cursorPosition: Int): Pair<String, Int> {
+        val lineStart = getCurrentLineStart(text, cursorPosition)
+        val lineEnd = getCurrentLineEnd(text, cursorPosition)
+        val line = text.substring(lineStart, lineEnd)
+        val restOfText = text.substring(lineEnd)
         
-        for (line in lines) {
-            if (cursorPosition > currentPos && cursorPosition <= currentPos + line.length + 1) {
-                // Курсор находится в этой строке
-                if (line.startsWith("• ")) {
-                    // Если это уже пункт списка и нажат Enter
-                    if (line.substring(2).trim().isEmpty()) {
-                        // Если строка пустая (кроме маркера), удаляем маркер
-                        newLines.add("")
-                        newCursorPosition = currentPos
-                    } else {
-                        // Добавляем новый пункт списка
-                        newLines.add(line)
-                        newLines.add("• ")
-                        newCursorPosition = currentPos + line.length + 3
-                    }
-                } else if (isBulletPoint) {
-                    // Добавляем маркер к текущей строке
-                    newLines.add("• $line")
-                    newCursorPosition += 2
-                } else {
-                    newLines.add(line)
-                }
-            } else {
-                newLines.add(line)
-            }
-            currentPos += line.length + 1
+        val trimmedLine = line.trimStart()
+        val leadingSpaces = line.substring(0, line.length - trimmedLine.length)
+        
+        return if (trimmedLine.startsWith("• ")) {
+            // Удаляем маркер
+            val newText = text.substring(0, lineStart) + leadingSpaces + trimmedLine.substring(2) + restOfText
+            val newPosition = cursorPosition - 2
+            Pair(newText, newPosition)
+        } else {
+            // Добавляем маркер
+            val newText = text.substring(0, lineStart) + leadingSpaces + "• " + trimmedLine + restOfText
+            val newPosition = cursorPosition + 2
+            Pair(newText, newPosition)
         }
+    }
+
+    fun handleEnterInBulletList(text: String, cursorPosition: Int): Pair<String, Int> {
+        val lineStart = getCurrentLineStart(text, cursorPosition)
+        val lineEnd = getCurrentLineEnd(text, cursorPosition)
+        val currentLine = text.substring(lineStart, lineEnd)
+        val trimmedLine = currentLine.trimStart()
         
-        return Pair(newLines.joinToString("\n"), newCursorPosition)
+        return if (trimmedLine == "• " || trimmedLine.isEmpty()) {
+            // Если строка пустая или содержит только маркер, удаляем маркер
+            val newText = text.substring(0, lineStart) + "\n" + text.substring(lineEnd)
+            val newPosition = lineStart + 1
+            isBulletPoint = false
+            Pair(newText, newPosition)
+        } else {
+            // Добавляем новую строку с маркером
+            val leadingSpaces = currentLine.substring(0, currentLine.length - trimmedLine.length)
+            val newText = text.substring(0, lineEnd) + "\n" + leadingSpaces + "• "
+            val newPosition = lineEnd + 3 + leadingSpaces.length
+            Pair(newText, newPosition)
+        }
     }
 
     Column(modifier = modifier) {
@@ -136,15 +155,13 @@ fun RichTextEditor(
 
             IconButton(
                 onClick = { 
-                    isBulletPoint = !isBulletPoint
-                    val (newText, newPosition) = handleBulletList(
-                        textFieldValue.text,
-                        textFieldValue.selection.start
-                    )
+                    val cursorPosition = textFieldValue.selection.start
+                    val (newText, newPosition) = toggleBulletForCurrentLine(textFieldValue.text, cursorPosition)
                     textFieldValue = TextFieldValue(
                         text = newText,
                         selection = TextRange(newPosition)
                     )
+                    isBulletPoint = !isBulletPoint
                     onValueChange(newText)
                     onFormattedValueChange(newText)
                 },
@@ -166,23 +183,23 @@ fun RichTextEditor(
             onValueChange = { newValue ->
                 val oldText = textFieldValue.text
                 val newText = newValue.text
+                val cursorPosition = newValue.selection.start
                 
-                textFieldValue = if (newText.length > oldText.length && 
-                    newText.endsWith("\n") && 
-                    oldText.length > 0 && 
-                    oldText[oldText.length - 1] != '\n') {
-                    // Обработка нажатия Enter
-                    val (processedText, newPosition) = handleBulletList(
-                        newText,
-                        newValue.selection.start
-                    )
-                    TextFieldValue(
+                // Проверяем, был ли нажат Enter
+                if (isBulletPoint && 
+                    newText.length > oldText.length && 
+                    newText.endsWith("\n") &&
+                    isCurrentLineBulleted(oldText, cursorPosition - 1)
+                ) {
+                    val (processedText, newPosition) = handleEnterInBulletList(oldText, cursorPosition - 1)
+                    textFieldValue = TextFieldValue(
                         text = processedText,
                         selection = TextRange(newPosition)
                     )
                 } else {
-                    newValue
+                    textFieldValue = newValue
                 }
+                
                 onValueChange(textFieldValue.text)
                 onFormattedValueChange(textFieldValue.text)
             },

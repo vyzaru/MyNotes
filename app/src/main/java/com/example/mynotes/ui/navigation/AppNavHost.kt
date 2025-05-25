@@ -36,13 +36,21 @@ fun AppNavHost(
                 navArgument("noteId") {
                     type = NavType.IntType
                     defaultValue = -1
+                },
+                navArgument("date") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
                 }
             )
         ) { backStackEntry ->
+            val dateString = backStackEntry.arguments?.getString("date")
+            val date = dateString?.toLongOrNull()
             NoteDetailScreen(
                 navController = navController,
                 viewModel = noteViewModel,
-                noteId = backStackEntry.arguments?.getInt("noteId") ?: -1
+                noteId = backStackEntry.arguments?.getInt("noteId") ?: -1,
+                initialDate = date
             )
         }
         composable(Screen.Calendar.route) {

@@ -27,37 +27,47 @@ import kotlinx.coroutines.flow.flowOf
 fun NoteDetailScreen(
     navController: NavController,
     viewModel: NoteViewModel,
-    noteId: Int
+    noteId: Int,
+    initialDate: Long? = null
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var formattedContent by remember { mutableStateOf("") }
     var textColor by remember { mutableStateOf(Color(0xFF000000)) }
     var backgroundColor by remember { mutableStateOf(Color(0xFFFFFFFF)) }
-    var scheduledDate by remember { mutableStateOf<LocalDate?>(null) }
+    var scheduledDate by remember { 
+        mutableStateOf<LocalDate?>(
+            initialDate?.let {
+                Instant.fromEpochMilliseconds(it)
+                    .toLocalDateTime(TimeZone.currentSystemDefault())
+                    .date
+            }
+        ) 
+    }
     var showDatePicker by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-    val datePickerState = rememberDatePickerState()
-
-    val noteState by remember(noteId) {
-        if (noteId != -1) {
-            viewModel.getNoteById(noteId)
-        } else {
-            flowOf(null)
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = scheduledDate?.let {
+            it.atTime(0, 0)
+                .toInstant(TimeZone.currentSystemDefault())
+                .toEpochMilliseconds()
         }
-    }.collectAsState(initial = null)
+    )
 
-    LaunchedEffect(noteState) {
-        noteState?.let {
-            android.util.Log.d("NoteDetailScreen", "Updating state from note: $it")
-            title = it.title
-            content = it.content
-            formattedContent = it.formattedContent
-            textColor = Color(it.textColor)
-            backgroundColor = Color(it.backgroundColor)
-            it.scheduledDate?.let { date ->
-                val instant = Instant.fromEpochMilliseconds(date)
-                scheduledDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+    LaunchedEffect(Unit) {
+        if (noteId != -1) {
+            viewModel.getNoteById(noteId).collect { note ->
+                note?.let {
+                    title = it.title
+                    content = it.content
+                    formattedContent = it.formattedContent
+                    textColor = Color(it.textColor)
+                    backgroundColor = Color(it.backgroundColor)
+                    it.scheduledDate?.let { date ->
+                        val instant = Instant.fromEpochMilliseconds(date)
+                        scheduledDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
+                    }
+                }
             }
         }
     }
@@ -213,6 +223,9 @@ fun NoteDetailScreen(
                                 "${date.dayOfMonth.toString().padStart(2, '0')}.${date.monthNumber.toString().padStart(2, '0')}.${date.year}"
                             )
                         )
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.CalendarToday, contentDescription = null)
                     }
                 )
             }

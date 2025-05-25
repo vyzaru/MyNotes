@@ -26,7 +26,8 @@ data class Note(
     }
 
     fun getFormattedDate(): String {
-        val instant = Instant.fromEpochMilliseconds(createdAt)
+        val timestamp = scheduledDate ?: createdAt
+        val instant = Instant.fromEpochMilliseconds(timestamp)
         val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
         return "${dateTime.dayOfMonth.toString().padStart(2, '0')}.${dateTime.monthNumber.toString().padStart(2, '0')}.${dateTime.year}"
     }
