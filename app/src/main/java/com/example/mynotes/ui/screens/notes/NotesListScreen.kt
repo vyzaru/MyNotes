@@ -119,7 +119,8 @@ fun NoteItem(
                 Text(
                     text = note.title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(note.textColor)
+                    color = Color(note.textColor),
+                    modifier = Modifier.weight(1f)
                 )
                 Text(
                     text = note.getFormattedTime(),
@@ -136,7 +137,7 @@ fun NoteItem(
             if (note.scheduledDate != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "Запланировано на: ${note.getFormattedDate()}",
+                    text = stringResource(R.string.scheduled_for, note.getFormattedDate()),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(note.textColor).copy(alpha = 0.6f)
                 )

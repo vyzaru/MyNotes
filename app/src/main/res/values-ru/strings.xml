@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Мои заметки</string>
+    <string name="new_note">Новая заметка</string>
+    <string name="edit_note">Редактирование</string>
+    <string name="title_hint">Заголовок</string>
+    <string name="content_hint">Содержание</string>
+    <string name="note_content_hint">Введите текст заметки...</string>
+    <string name="save">Сохранить</string>
+    <string name="delete">Удалить</string>
+    <string name="delete_note">Удаление заметки</string>
+    <string name="delete_note_confirmation">Вы уверены, что хотите удалить эту заметку?</string>
+    <string name="back">Назад</string>
+    <string name="calendar">Календарь</string>
+    <string name="settings">Настройки</string>
+    <string name="dark_theme">Тёмная тема</string>
+    <string name="font">Шрифт</string>
+    <string name="font_size">Размер шрифта: %d sp</string>
+    <string name="no_notes">Нет заметок</string>
+    <string name="no_notes_for_date">Нет заметок на эту дату</string>
+    <string name="add_note">Добавить заметку</string>
+    <string name="schedule">Запланировать</string>
+    <string name="scheduled_for">Запланировано на: %s</string>
+    <string name="notes_for_date">Заметки на %s</string>
+    <string name="bold">Жирный</string>
+    <string name="italic">Курсив</string>
+    <string name="bullet_list">Список</string>
+    <string name="text_color">Цвет текста</string>
+    <string name="choose_color">Выберите цвет текста</string>
+    <string name="choose_date">Выберите дату</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+    
+    <!-- Дни недели -->
+    <string name="monday_short">Пн</string>
+    <string name="tuesday_short">Вт</string>
+    <string name="wednesday_short">Ср</string>
+    <string name="thursday_short">Чт</string>
+    <string name="friday_short">Пт</string>
+    <string name="saturday_short">Сб</string>
+    <string name="sunday_short">Вс</string>
+    
+    <!-- Месяцы -->
+    <string name="january">Январь</string>
+    <string name="february">Февраль</string>
+    <string name="march">Март</string>
+    <string name="april">Апрель</string>
+    <string name="may">Май</string>
+    <string name="june">Июнь</string>
+    <string name="july">Июль</string>
+    <string name="august">Август</string>
+    <string name="september">Сентябрь</string>
+    <string name="october">Октябрь</string>
+    <string name="november">Ноябрь</string>
+    <string name="december">Декабрь</string>
+</resources> 

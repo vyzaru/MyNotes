@@ -1,5 +1,6 @@
 package com.example.mynotes.ui.screens.notes
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.mynotes.data.models.Note
@@ -18,6 +20,7 @@ import com.example.mynotes.ui.screens.notes.viewmodel.NoteViewModel
 import androidx.compose.ui.res.stringResource
 import com.example.mynotes.R
 import kotlinx.datetime.*
+import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,26 +32,32 @@ fun NoteDetailScreen(
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var formattedContent by remember { mutableStateOf("") }
-    var textColor by remember { mutableStateOf(Color.Black) }
+    var textColor by remember { mutableStateOf(Color(0xFF000000)) }
     var backgroundColor by remember { mutableStateOf(Color(0xFFFFFFFF)) }
     var scheduledDate by remember { mutableStateOf<LocalDate?>(null) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val datePickerState = rememberDatePickerState()
 
-    LaunchedEffect(noteId) {
+    val noteState by remember(noteId) {
         if (noteId != -1) {
-            viewModel.allNotes.collect { notes ->
-                notes.find { it.id == noteId }?.let { note ->
-                    title = note.title
-                    content = note.content
-                    formattedContent = note.formattedContent
-                    textColor = Color(note.textColor)
-                    backgroundColor = Color(note.backgroundColor)
-                    note.scheduledDate?.let {
-                        val instant = Instant.fromEpochMilliseconds(it)
-                        scheduledDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
-                    }
-                }
+            viewModel.getNoteById(noteId)
+        } else {
+            flowOf(null)
+        }
+    }.collectAsState(initial = null)
+
+    LaunchedEffect(noteState) {
+        noteState?.let {
+            android.util.Log.d("NoteDetailScreen", "Updating state from note: $it")
+            title = it.title
+            content = it.content
+            formattedContent = it.formattedContent
+            textColor = Color(it.textColor)
+            backgroundColor = Color(it.backgroundColor)
+            it.scheduledDate?.let { date ->
+                val instant = Instant.fromEpochMilliseconds(date)
+                scheduledDate = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date
             }
         }
     }
@@ -81,6 +90,43 @@ fun NoteDetailScreen(
         }
     }
 
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text(stringResource(R.string.delete_note)) },
+            text = { Text(stringResource(R.string.delete_note_confirmation)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val noteToDelete = Note(
+                            id = noteId,
+                            title = title,
+                            content = content,
+                            formattedContent = formattedContent,
+                            textColor = textColor.toArgb(),
+                            backgroundColor = backgroundColor.toArgb(),
+                            scheduledDate = scheduledDate?.let {
+                                it.atTime(0, 0)
+                                    .toInstant(TimeZone.currentSystemDefault())
+                                    .toEpochMilliseconds()
+                            }
+                        )
+                        viewModel.delete(noteToDelete)
+                        showDeleteDialog = false
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -91,25 +137,34 @@ fun NoteDetailScreen(
                     }
                 },
                 actions = {
+                    if (noteId != -1) {
+                        IconButton(onClick = { showDeleteDialog = true }) {
+                            Icon(Icons.Default.Delete, stringResource(R.string.delete))
+                        }
+                    }
                     IconButton(onClick = { showDatePicker = true }) {
                         Icon(Icons.Default.CalendarToday, stringResource(R.string.schedule))
                     }
                     IconButton(onClick = {
-                        viewModel.insert(
-                            Note(
-                                id = if (noteId == -1) 0 else noteId,
-                                title = title,
-                                content = content,
-                                formattedContent = formattedContent,
-                                textColor = textColor.value.toInt(),
-                                backgroundColor = backgroundColor.value.toInt(),
-                                scheduledDate = scheduledDate?.let {
-                                    it.atTime(0, 0)
-                                        .toInstant(TimeZone.currentSystemDefault())
-                                        .toEpochMilliseconds()
-                                }
-                            )
+                        val note = Note(
+                            id = if (noteId == -1) 0 else noteId,
+                            title = title,
+                            content = content,
+                            formattedContent = formattedContent,
+                            textColor = textColor.toArgb(),
+                            backgroundColor = backgroundColor.toArgb(),
+                            scheduledDate = scheduledDate?.let {
+                                it.atTime(0, 0)
+                                    .toInstant(TimeZone.currentSystemDefault())
+                                    .toEpochMilliseconds()
+                            }
                         )
+                        android.util.Log.d("NoteDetailScreen", "Saving note: $note")
+                        if (noteId == -1) {
+                            viewModel.insert(note)
+                        } else {
+                            viewModel.update(note)
+                        }
                         navController.popBackStack()
                     }) {
                         Icon(Icons.Default.Save, stringResource(R.string.save))
@@ -122,12 +177,17 @@ fun NoteDetailScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
+                .background(backgroundColor)
         ) {
             TextField(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text(stringResource(R.string.title_hint)) },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.colors(
+                    unfocusedTextColor = textColor,
+                    focusedTextColor = textColor
+                )
             )
             
             Spacer(modifier = Modifier.height(16.dp))
