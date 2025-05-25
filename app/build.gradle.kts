@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.devtools.ksp")
+    alias(libs.plugins.hilt)
 }
 
 android {
@@ -68,6 +69,28 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
     implementation("androidx.compose.material:material-icons-core:1.6.0")
     implementation("androidx.compose.material:material-icons-extended:1.6.0")
+
+    // Для календаря
+    implementation("io.github.boguszpawlowski.composecalendar:composecalendar:1.1.0")
+    implementation("io.github.boguszpawlowski.composecalendar:kotlinx-datetime:1.1.0")
+
+    // Для навигации
+    implementation("androidx.navigation:navigation-compose:2.7.0")
+
+    // Для работы с изображениями
+    implementation("io.coil-kt:coil-compose:2.4.0")
+
+    implementation("androidx.compose.ui:ui-text-google-fonts:1.6.0")
+
+    // Для дат
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.1")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
+    implementation(libs.hilt.navigation.compose)
+    implementation("androidx.navigation:navigation-compose:2.6.0")
+    implementation("androidx.compose.material3:material3:1.1.2")
+    implementation("androidx.compose.material:material-icons-extended:1.5.4")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)

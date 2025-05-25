@@ -3,35 +3,46 @@ package com.example.mynotes
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.Modifier
-import com.example.mynotes.ui.theme.MyNotesTheme
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import com.example.mynotes.data.DatabaseModule
-import com.example.mynotes.ui.navigation.NotesApp
-import com.example.mynotes.ui.notes.viewmodel.NoteViewModel
-import com.example.mynotes.ui.notes.viewmodel.ViewModelFactory
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.rememberNavController
+import com.example.mynotes.data.models.AppSettings
+import com.example.mynotes.ui.navigation.AppNavHost
+import com.example.mynotes.ui.screens.notes.viewmodel.NoteViewModel
+import com.example.mynotes.ui.screens.settings.viewmodel.SettingsViewModel
+import com.example.mynotes.ui.theme.AppTheme
+import com.example.mynotes.ui.theme.MyNotesTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val viewModel: NoteViewModel by viewModels {
-        ViewModelFactory(
-            DatabaseModule.provideNoteRepository(
-                DatabaseModule.provideDatabase(application)
-            )
-        )
-    }
+    private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            MyNotesTheme {
+            val settings by settingsViewModel.settings.collectAsState()
+            val navController = rememberNavController()
+            val noteViewModel: NoteViewModel = hiltViewModel()
+            
+            MyNotesTheme(
+                darkTheme = settings.isDarkTheme
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    NotesApp(viewModel)
+                    AppNavHost(
+                        navController = navController,
+                        noteViewModel = noteViewModel,
+                        settingsViewModel = settingsViewModel
+                    )
                 }
             }
         }

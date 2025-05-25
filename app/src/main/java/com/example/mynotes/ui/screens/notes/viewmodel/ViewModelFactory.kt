@@ -1,8 +1,8 @@
-package com.example.mynotes.ui.notes.viewmodel
+package com.example.mynotes.ui.screens.notes.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.example.mynotes.data.NoteRepository
+import com.example.mynotes.data.repository.NoteRepository
 
 class ViewModelFactory(private val repository: NoteRepository) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

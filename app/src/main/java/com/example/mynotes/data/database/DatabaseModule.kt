@@ -1,7 +1,8 @@
-package com.example.mynotes.data
+package com.example.mynotes.data.database
 
 import android.app.Application
 import androidx.room.Room
+import com.example.mynotes.data.repository.NoteRepository
 
 object DatabaseModule {
     fun provideDatabase(application: Application): AppDatabase {
