@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -19,6 +20,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.stringResource
 import com.example.mynotes.R
+import com.example.mynotes.data.models.AppSettings
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.mynotes.ui.screens.settings.viewmodel.SettingsViewModel
 
 data class TextStyle(
     val isBold: Boolean = false,
@@ -45,22 +51,43 @@ fun RichTextEditor(
     onFormattedValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     textColor: Color = Color.Black,
-    onTextColorChange: (Color) -> Unit
+    onTextColorChange: (Color) -> Unit,
+    settingsViewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val settings by settingsViewModel.settings.collectAsState()
     var textFieldValue by remember { mutableStateOf(TextFieldValue(value)) }
     var currentStyle by remember { mutableStateOf(TextStyle()) }
     var showColorPicker by remember { mutableStateOf(false) }
     var formattedText by remember { mutableStateOf(FormattedText(value, emptyList())) }
+    var isInBulletList by remember { mutableStateOf(false) }
+    var bulletListStartLine by remember { mutableStateOf(-1) }
+    var bulletListEndLine by remember { mutableStateOf(-1) }
 
-    // Обновляем значение при изменении входного параметра
+    // Инициализация при загрузке текста
     LaunchedEffect(value) {
         if (textFieldValue.text != value) {
-            val currentSelection = textFieldValue.selection
             textFieldValue = TextFieldValue(
                 text = value,
-                selection = currentSelection
+                selection = textFieldValue.selection
             )
             formattedText = FormattedText(value, emptyList())
+            
+            // Проверяем, находимся ли мы в маркированном списке
+            val lines = value.lines()
+            var startLine = -1
+            var endLine = -1
+            for (i in lines.indices) {
+                if (lines[i].startsWith("• ")) {
+                    if (startLine == -1) startLine = i
+                    endLine = i
+                } else if (startLine != -1 && endLine != -1) {
+                    break
+                }
+            }
+            isInBulletList = startLine != -1
+            bulletListStartLine = startLine
+            bulletListEndLine = endLine
+            currentStyle = currentStyle.copy(isBulletList = isInBulletList)
         }
     }
 
@@ -68,107 +95,145 @@ fun RichTextEditor(
     fun handleTextInput(newValue: TextFieldValue) {
         val selection = newValue.selection
         val newText = newValue.text
+        val oldText = textFieldValue.text
         
-        // Обработка маркированного списка
-        if (currentStyle.isBulletList) {
-            // Проверяем, был ли добавлен перенос строки
-            val oldText = textFieldValue.text
-            val oldLines = oldText.split("\n")
-            val newLines = newText.split("\n")
-            
-            if (newLines.size > oldLines.size) {
-                // Добавляем маркер к новой строке
-                val processedLines = newLines.mapIndexed { index, line ->
-                    if (index == newLines.size - 1 && line.isEmpty()) {
+        // Проверяем, является ли это удалением символа
+        val isDeletion = newText.length < oldText.length
+        
+        // Находим текущую строку и позицию курсора
+        val cursorLine = newText.substring(0, selection.start).count { it == '\n' }
+        val cursorOffset = selection.start - newText.split("\n").take(cursorLine).sumOf { it.length + 1 }
+        
+        // Разбиваем текст на строки
+        val lines = newText.split("\n")
+        val oldLines = oldText.split("\n")
+        
+        // Определяем, является ли это переносом строки
+        val isNewLine = newText.length > oldText.length && newText[selection.start - 1] == '\n'
+        
+        // Проверяем, нужно ли отключить маркированный список
+        if (isDeletion && cursorOffset == 0) {
+            val currentLine = oldLines.getOrNull(cursorLine) ?: ""
+            if (currentLine.startsWith("• ")) {
+                // Если удаляем маркер, отключаем список
+                currentStyle = currentStyle.copy(isBulletList = false)
+            }
+        }
+        
+        // Обрабатываем каждую строку
+        val processedLines = lines.mapIndexed { index, line ->
+            when {
+                // Если это перенос строки
+                isNewLine && index == cursorLine -> {
+                    val prevLine = oldLines.getOrNull(index - 1) ?: ""
+                    // Добавляем маркер только если предыдущая строка была маркированной и мы в списке
+                    if (prevLine.startsWith("• ") && currentStyle.isBulletList && line.isEmpty()) {
                         "• "
-                    } else if (!line.startsWith("• ")) {
+                    } else {
+                        line
+                    }
+                }
+                // Если это существующая маркированная строка
+                line.startsWith("• ") -> {
+                    // Если пытаемся удалить маркер (курсор в начале строки и нажали backspace)
+                    if (isDeletion && cursorOffset == 0 && index == cursorLine) {
+                        // Удаляем маркер
+                        line.substring(2)
+                    } else {
+                        line
+                    }
+                }
+                // Если это пустая строка после маркированной
+                index > 0 && line.isEmpty() && oldLines.getOrNull(index - 1)?.startsWith("• ") == true -> {
+                    if (cursorOffset == 0 && currentStyle.isBulletList) {
+                        "• "
+                    } else {
+                        line
+                    }
+                }
+                // Если это новая строка после маркированной (не через перенос)
+                index > 0 && oldLines.getOrNull(index - 1)?.startsWith("• ") == true && !line.startsWith("• ") -> {
+                    if (cursorOffset == 0 && currentStyle.isBulletList) {
                         "• $line"
                     } else {
                         line
                     }
                 }
-                val processedText = processedLines.joinToString("\n")
-                
-                // Обновляем множество строк с маркерами
-                val newBulletLines = processedLines.mapIndexed { index, line ->
-                    if (line.startsWith("• ")) index else -1
-                }.filter { it != -1 }.toSet()
-                
-                textFieldValue = TextFieldValue(
-                    text = processedText,
-                    selection = TextRange(processedText.length)
-                )
-                formattedText = formattedText.copy(
-                    text = processedText,
-                    bulletLines = newBulletLines
-                )
-            } else {
-                // Обрабатываем обычный ввод текста
-                val lines = newText.split("\n")
-                val processedLines = lines.mapIndexed { index, line ->
-                    if (formattedText.bulletLines.contains(index) || line.startsWith("• ")) {
-                        if (!line.startsWith("• ")) "• $line" else line
-                    } else {
-                        line
-                    }
-                }
-                val processedText = processedLines.joinToString("\n")
-                
-                // Корректируем позицию курсора
-                val newSelection = if (newText != processedText) {
-                    val cursorLine = processedText.substring(0, selection.start).count { it == '\n' }
-                    val currentLineStart = processedText.split("\n").take(cursorLine).sumOf { it.length + 1 }
-                    val cursorOffset = selection.start - currentLineStart
-                    TextRange(currentLineStart + cursorOffset + (if (cursorOffset == 0) 2 else 0))
-                } else {
-                    selection
-                }
-
-                textFieldValue = TextFieldValue(
-                    text = processedText,
-                    selection = newSelection
-                )
-                formattedText = formattedText.copy(text = processedText)
+                // Все остальные случаи
+                else -> line
             }
-        } else {
-            // Если маркированный список отключен, сохраняем маркеры для отмеченных строк
-            val lines = newText.split("\n")
-            val processedLines = lines.mapIndexed { index, line ->
-                if (formattedText.bulletLines.contains(index)) {
-                    if (!line.startsWith("• ")) "• $line" else line
-                } else {
-                    if (line.startsWith("• ")) line.substring(2) else line
-                }
-            }
-            val processedText = processedLines.joinToString("\n")
-            
-            textFieldValue = TextFieldValue(
-                text = processedText,
-                selection = selection
-            )
-            formattedText = formattedText.copy(text = processedText)
         }
         
-        onValueChange(textFieldValue.text)
-        onFormattedValueChange(textFieldValue.text)
+        val processedText = processedLines.joinToString("\n")
+        
+        // Корректируем позицию курсора
+        val newSelection = if (newText != processedText) {
+            val currentLineStart = processedText.split("\n").take(cursorLine).sumOf { it.length + 1 }
+            val currentLine = processedLines.getOrNull(cursorLine) ?: ""
+            
+            when {
+                // Если мы удалили маркер
+                isDeletion && cursorOffset == 0 && currentLine.startsWith("• ") -> {
+                    TextRange(currentLineStart)
+                }
+                // Если мы добавили маркер
+                !isDeletion && cursorOffset == 0 && currentLine.startsWith("• ") -> {
+                    TextRange(currentLineStart + 2)
+                }
+                // Если это перенос строки
+                isNewLine && cursorLine == cursorLine -> {
+                    TextRange(currentLineStart + cursorOffset)
+                }
+                // Все остальные случаи
+                else -> {
+                    TextRange(currentLineStart + cursorOffset)
+                }
+            }
+        } else {
+            selection
+        }
+        
+        textFieldValue = TextFieldValue(
+            text = processedText,
+            selection = newSelection
+        )
+        formattedText = FormattedText(processedText, formattedText.styles)
+        
+        onValueChange(processedText)
+        onFormattedValueChange(processedText)
     }
 
     // Функция для переключения форматирования
     fun toggleFormatting(isBold: Boolean) {
+        val text = textFieldValue.text
         val selection = textFieldValue.selection
-        if (!selection.collapsed) {
-            val newStyle = if (isBold) {
-                currentStyle.copy(isBold = !currentStyle.isBold)
-            } else {
-                currentStyle.copy(isItalic = !currentStyle.isItalic)
-            }
-            
-            val newStyles = formattedText.styles.toMutableList()
-            newStyles.add(TextStyleRange(newStyle, selection.start, selection.end))
-            
-            formattedText = formattedText.copy(styles = newStyles)
-            currentStyle = newStyle
+        val cursorPosition = selection.start
+        
+        // Находим текущую строку
+        val beforeCursor = text.substring(0, cursorPosition)
+        val lastNewLine = beforeCursor.lastIndexOf("\n")
+        val lineStart = if (lastNewLine == -1) 0 else lastNewLine + 1
+        val currentLine = beforeCursor.count { it == '\n' }
+        
+        // Получаем текущую строку
+        val currentLineText = text.substring(lineStart).split("\n").first()
+        
+        // Создаем новый стиль
+        val newStyle = if (isBold) {
+            currentStyle.copy(isBold = !currentStyle.isBold)
+        } else {
+            currentStyle.copy(isItalic = !currentStyle.isItalic)
         }
+        
+        // Обновляем стили
+        val newStyles = formattedText.styles.toMutableList()
+        newStyles.add(TextStyleRange(newStyle, lineStart, lineStart + currentLineText.length))
+        
+        formattedText = FormattedText(text, newStyles)
+        currentStyle = newStyle
+        
+        onValueChange(text)
+        onFormattedValueChange(text)
     }
 
     // Функция для переключения маркированного списка
@@ -181,40 +246,45 @@ fun RichTextEditor(
         val beforeCursor = text.substring(0, cursorPosition)
         val lastNewLine = beforeCursor.lastIndexOf("\n")
         val lineStart = if (lastNewLine == -1) 0 else lastNewLine + 1
-        val currentLine = beforeCursor.count { it == '\n' }
         
-        // Проверяем, есть ли уже маркер в текущей строке
+        // Получаем текущую строку
         val currentLineText = text.substring(lineStart).split("\n").first()
         val hasBullet = currentLineText.startsWith("• ")
         
-        if (hasBullet) {
-            // Если маркер есть, удаляем его
-            val newText = text.substring(0, lineStart) + currentLineText.substring(2) + text.substring(lineStart + currentLineText.length)
-            textFieldValue = TextFieldValue(
-                text = newText,
-                selection = TextRange(cursorPosition - 2)
-            )
-            formattedText = formattedText.copy(
-                text = newText,
-                bulletLines = formattedText.bulletLines - currentLine
-            )
-            currentStyle = currentStyle.copy(isBulletList = false)
+        // Создаем новую версию текста
+        val newText = if (hasBullet) {
+            // Удаляем маркер
+            text.substring(0, lineStart) + currentLineText.substring(2) + text.substring(lineStart + currentLineText.length)
         } else {
-            // Если маркера нет, добавляем его
-            val newText = text.substring(0, lineStart) + "• " + text.substring(lineStart)
-            textFieldValue = TextFieldValue(
-                text = newText,
-                selection = TextRange(cursorPosition + 2)
-            )
-            formattedText = formattedText.copy(
-                text = newText,
-                bulletLines = formattedText.bulletLines + currentLine
-            )
-            currentStyle = currentStyle.copy(isBulletList = true)
+            // Добавляем маркер
+            text.substring(0, lineStart) + "• " + text.substring(lineStart)
         }
         
-        onValueChange(textFieldValue.text)
-        onFormattedValueChange(textFieldValue.text)
+        try {
+            // Обновляем состояние
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(if (hasBullet) cursorPosition - 2 else cursorPosition + 2)
+            )
+            
+            // Обновляем форматированный текст, сохраняя только стили, не связанные с маркированным списком
+            val newStyles = formattedText.styles.filter { style ->
+                style.start < lineStart || style.end > lineStart + currentLineText.length
+            }.toMutableList()
+            
+            formattedText = FormattedText(newText, newStyles)
+            currentStyle = currentStyle.copy(isBulletList = !hasBullet)
+            
+            onValueChange(newText)
+            onFormattedValueChange(newText)
+        } catch (e: Exception) {
+            // В случае ошибки просто обновляем текст без стилей
+            textFieldValue = TextFieldValue(newText)
+            formattedText = FormattedText(newText, emptyList())
+            currentStyle = currentStyle.copy(isBulletList = !hasBullet)
+            onValueChange(newText)
+            onFormattedValueChange(newText)
+        }
     }
 
     Column(modifier = modifier) {
@@ -290,7 +360,11 @@ fun RichTextEditor(
                 onValueChange = { handleTextInput(it) },
                 textStyle = TextStyle(
                     color = Color.Transparent,
-                    fontSize = 16.sp
+                    fontSize = settings.fontSize.sp,
+                    fontFamily = when (settings.selectedFontFamily) {
+                        "Cursive" -> FontFamily.Cursive
+                        else -> FontFamily.Default
+                    }
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
@@ -300,7 +374,11 @@ fun RichTextEditor(
                             text = annotatedText,
                             style = TextStyle(
                                 color = textColor,
-                                fontSize = 16.sp
+                                fontSize = settings.fontSize.sp,
+                                fontFamily = when (settings.selectedFontFamily) {
+                                    "Cursive" -> FontFamily.Cursive
+                                    else -> FontFamily.Default
+                                }
                             )
                         )
                         innerTextField()

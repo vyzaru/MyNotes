@@ -4,6 +4,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,35 +52,64 @@ fun SettingsScreen(
             )
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+                .padding(16.dp)
+        ) {
+            // Dark Theme Switch
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(stringResource(R.string.dark_theme), modifier = Modifier.weight(1f))
+                Text(
+                    text = stringResource(R.string.dark_theme),
+                    modifier = Modifier.weight(1f)
+                )
                 Switch(
                     checked = settings.isDarkTheme,
                     onCheckedChange = { viewModel.toggleDarkTheme(it) }
                 )
             }
 
-            Text(stringResource(R.string.font), style = MaterialTheme.typography.titleMedium)
-            Row {
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Font Selection
+            Text(
+                text = stringResource(R.string.font),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 listOf("Roboto", "Cursive").forEach { font ->
                     FilterChip(
                         selected = settings.selectedFontFamily == font,
                         onClick = { viewModel.updateFont(font) },
-                        label = { Text(font) }
+                        label = { Text(font) },
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
 
-            Text(stringResource(R.string.font_size, settings.fontSize.toInt()))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Font Size Slider
+            Text(
+                text = stringResource(R.string.font_size, settings.fontSize.toInt()),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
             Slider(
                 value = settings.fontSize,
                 onValueChange = { viewModel.updateFontSize(it) },
                 valueRange = 12f..24f,
-                steps = 12
+                steps = 12,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
         }
     }

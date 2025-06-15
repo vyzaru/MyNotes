@@ -17,7 +17,6 @@ import com.example.mynotes.data.models.AppSettings
 import com.example.mynotes.ui.navigation.AppNavHost
 import com.example.mynotes.ui.screens.notes.viewmodel.NoteViewModel
 import com.example.mynotes.ui.screens.settings.viewmodel.SettingsViewModel
-import com.example.mynotes.ui.theme.AppTheme
 import com.example.mynotes.ui.theme.MyNotesTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -38,9 +37,7 @@ class MainActivity : ComponentActivity() {
             val navController = rememberNavController()
             val noteViewModel: NoteViewModel = hiltViewModel()
                 
-            MyNotesTheme(
-                darkTheme = settings.isDarkTheme
-            ) {
+            MyNotesTheme(settings = settings) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background

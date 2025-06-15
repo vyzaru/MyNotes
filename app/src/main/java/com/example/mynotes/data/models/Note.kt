@@ -12,7 +12,7 @@ data class Note(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val title: String,
     val content: String,
-    val formattedContent: String = "",
+    val formattedContent: String = content,
     val textColor: Int = 0xFF000000.toInt(),
     val backgroundColor: Int = 0xFFFFFFFF.toInt(),
     val createdAt: Long = Clock.System.now().toEpochMilliseconds(),

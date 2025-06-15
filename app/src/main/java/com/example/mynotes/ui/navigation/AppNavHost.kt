@@ -49,6 +49,7 @@ fun AppNavHost(
             NoteDetailScreen(
                 navController = navController,
                 viewModel = noteViewModel,
+                settingsViewModel = settingsViewModel,
                 noteId = backStackEntry.arguments?.getInt("noteId") ?: -1,
                 initialDate = date
             )

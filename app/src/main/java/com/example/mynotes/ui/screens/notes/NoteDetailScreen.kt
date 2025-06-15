@@ -17,6 +17,7 @@ import androidx.navigation.NavController
 import com.example.mynotes.data.models.Note
 import com.example.mynotes.ui.components.RichTextEditor
 import com.example.mynotes.ui.screens.notes.viewmodel.NoteViewModel
+import com.example.mynotes.ui.screens.settings.viewmodel.SettingsViewModel
 import androidx.compose.ui.res.stringResource
 import com.example.mynotes.R
 import kotlinx.datetime.*
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.flowOf
 fun NoteDetailScreen(
     navController: NavController,
     viewModel: NoteViewModel,
+    settingsViewModel: SettingsViewModel,
     noteId: Int,
     initialDate: Long? = null
 ) {
@@ -206,6 +208,7 @@ fun NoteDetailScreen(
                 onFormattedValueChange = { content = it },
                 textColor = textColor,
                 onTextColorChange = { textColor = it },
+                settingsViewModel = settingsViewModel,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)

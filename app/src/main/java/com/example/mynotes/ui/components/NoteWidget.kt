@@ -50,21 +50,13 @@ private fun parseFormattedText(text: String): AnnotatedString {
         
         while (currentIndex < text.length) {
             when {
-                text.substring(currentIndex).startsWith("<b>") -> {
-                    isInBold = true
-                    currentIndex += 3
+                text.substring(currentIndex).startsWith("**") -> {
+                    isInBold = !isInBold
+                    currentIndex += 2
                 }
-                text.substring(currentIndex).startsWith("</b>") -> {
-                    isInBold = false
-                    currentIndex += 4
-                }
-                text.substring(currentIndex).startsWith("<i>") -> {
-                    isInItalic = true
-                    currentIndex += 3
-                }
-                text.substring(currentIndex).startsWith("</i>") -> {
-                    isInItalic = false
-                    currentIndex += 4
+                text.substring(currentIndex).startsWith("_") -> {
+                    isInItalic = !isInItalic
+                    currentIndex += 1
                 }
                 text.substring(currentIndex).startsWith("• ") -> {
                     withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
