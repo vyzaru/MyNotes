@@ -32,7 +32,6 @@ fun NoteDetailScreen(
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
-    var formattedContent by remember { mutableStateOf("") }
     var textColor by remember { mutableStateOf(Color(0xFF000000)) }
     var backgroundColor by remember { mutableStateOf(Color(0xFFFFFFFF)) }
     var scheduledDate by remember { 
@@ -60,7 +59,6 @@ fun NoteDetailScreen(
                 note?.let {
                     title = it.title
                     content = it.content
-                    formattedContent = it.formattedContent
                     textColor = Color(it.textColor)
                     backgroundColor = Color(it.backgroundColor)
                     it.scheduledDate?.let { date ->
@@ -112,7 +110,7 @@ fun NoteDetailScreen(
                             id = noteId,
                             title = title,
                             content = content,
-                            formattedContent = formattedContent,
+                            formattedContent = content,
                             textColor = textColor.toArgb(),
                             backgroundColor = backgroundColor.toArgb(),
                             scheduledDate = scheduledDate?.let {
@@ -160,7 +158,7 @@ fun NoteDetailScreen(
                             id = if (noteId == -1) 0 else noteId,
                             title = title,
                             content = content,
-                            formattedContent = formattedContent,
+                            formattedContent = content,
                             textColor = textColor.toArgb(),
                             backgroundColor = backgroundColor.toArgb(),
                             scheduledDate = scheduledDate?.let {
@@ -205,7 +203,7 @@ fun NoteDetailScreen(
             RichTextEditor(
                 value = content,
                 onValueChange = { content = it },
-                onFormattedValueChange = { formattedContent = it },
+                onFormattedValueChange = { content = it },
                 textColor = textColor,
                 onTextColorChange = { textColor = it },
                 modifier = Modifier

@@ -1,24 +1,42 @@
 package com.example.mynotes.ui.components
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextRange
 import com.example.mynotes.R
+
+data class TextStyle(
+    val isBold: Boolean = false,
+    val isItalic: Boolean = false,
+    val isBulletList: Boolean = false
+)
+
+data class FormattedText(
+    val text: String,
+    val styles: List<TextStyleRange>,
+    val bulletLines: Set<Int> = emptySet()
+)
+
+data class TextStyleRange(
+    val style: TextStyle,
+    val start: Int,
+    val end: Int
+)
 
 @Composable
 fun RichTextEditor(
@@ -29,76 +47,177 @@ fun RichTextEditor(
     textColor: Color = Color.Black,
     onTextColorChange: (Color) -> Unit
 ) {
-    var isBold by remember { mutableStateOf(false) }
-    var isItalic by remember { mutableStateOf(false) }
-    var isBulletPoint by remember { mutableStateOf(false) }
-    var showColorPicker by remember { mutableStateOf(false) }
     var textFieldValue by remember { mutableStateOf(TextFieldValue(value)) }
+    var currentStyle by remember { mutableStateOf(TextStyle()) }
+    var showColorPicker by remember { mutableStateOf(false) }
+    var formattedText by remember { mutableStateOf(FormattedText(value, emptyList())) }
 
+    // Обновляем значение при изменении входного параметра
     LaunchedEffect(value) {
-        if (value != textFieldValue.text) {
-            textFieldValue = textFieldValue.copy(text = value)
+        if (textFieldValue.text != value) {
+            val currentSelection = textFieldValue.selection
+            textFieldValue = TextFieldValue(
+                text = value,
+                selection = currentSelection
+            )
+            formattedText = FormattedText(value, emptyList())
         }
     }
 
-    fun getCurrentLineStart(text: String, cursorPosition: Int): Int {
-        return text.lastIndexOf('\n', cursorPosition - 1).let { if (it == -1) 0 else it + 1 }
-    }
-
-    fun getCurrentLineEnd(text: String, cursorPosition: Int): Int {
-        return text.indexOf('\n', cursorPosition).let { if (it == -1) text.length else it }
-    }
-
-    fun isCurrentLineBulleted(text: String, cursorPosition: Int): Boolean {
-        val lineStart = getCurrentLineStart(text, cursorPosition)
-        return text.substring(lineStart).trimStart().startsWith("• ")
-    }
-
-    fun toggleBulletForCurrentLine(text: String, cursorPosition: Int): Pair<String, Int> {
-        val lineStart = getCurrentLineStart(text, cursorPosition)
-        val lineEnd = getCurrentLineEnd(text, cursorPosition)
-        val line = text.substring(lineStart, lineEnd)
-        val restOfText = text.substring(lineEnd)
+    // Функция для обработки ввода текста
+    fun handleTextInput(newValue: TextFieldValue) {
+        val selection = newValue.selection
+        val newText = newValue.text
         
-        val trimmedLine = line.trimStart()
-        val leadingSpaces = line.substring(0, line.length - trimmedLine.length)
-        
-        return if (trimmedLine.startsWith("• ")) {
-            // Удаляем маркер
-            val newText = text.substring(0, lineStart) + leadingSpaces + trimmedLine.substring(2) + restOfText
-            val newPosition = cursorPosition - 2
-            Pair(newText, newPosition)
+        // Обработка маркированного списка
+        if (currentStyle.isBulletList) {
+            // Проверяем, был ли добавлен перенос строки
+            val oldText = textFieldValue.text
+            val oldLines = oldText.split("\n")
+            val newLines = newText.split("\n")
+            
+            if (newLines.size > oldLines.size) {
+                // Добавляем маркер к новой строке
+                val processedLines = newLines.mapIndexed { index, line ->
+                    if (index == newLines.size - 1 && line.isEmpty()) {
+                        "• "
+                    } else if (!line.startsWith("• ")) {
+                        "• $line"
+                    } else {
+                        line
+                    }
+                }
+                val processedText = processedLines.joinToString("\n")
+                
+                // Обновляем множество строк с маркерами
+                val newBulletLines = processedLines.mapIndexed { index, line ->
+                    if (line.startsWith("• ")) index else -1
+                }.filter { it != -1 }.toSet()
+                
+                textFieldValue = TextFieldValue(
+                    text = processedText,
+                    selection = TextRange(processedText.length)
+                )
+                formattedText = formattedText.copy(
+                    text = processedText,
+                    bulletLines = newBulletLines
+                )
+            } else {
+                // Обрабатываем обычный ввод текста
+                val lines = newText.split("\n")
+                val processedLines = lines.mapIndexed { index, line ->
+                    if (formattedText.bulletLines.contains(index) || line.startsWith("• ")) {
+                        if (!line.startsWith("• ")) "• $line" else line
+                    } else {
+                        line
+                    }
+                }
+                val processedText = processedLines.joinToString("\n")
+                
+                // Корректируем позицию курсора
+                val newSelection = if (newText != processedText) {
+                    val cursorLine = processedText.substring(0, selection.start).count { it == '\n' }
+                    val currentLineStart = processedText.split("\n").take(cursorLine).sumOf { it.length + 1 }
+                    val cursorOffset = selection.start - currentLineStart
+                    TextRange(currentLineStart + cursorOffset + (if (cursorOffset == 0) 2 else 0))
+                } else {
+                    selection
+                }
+
+                textFieldValue = TextFieldValue(
+                    text = processedText,
+                    selection = newSelection
+                )
+                formattedText = formattedText.copy(text = processedText)
+            }
         } else {
-            // Добавляем маркер
-            val newText = text.substring(0, lineStart) + leadingSpaces + "• " + trimmedLine + restOfText
-            val newPosition = cursorPosition + 2
-            Pair(newText, newPosition)
+            // Если маркированный список отключен, сохраняем маркеры для отмеченных строк
+            val lines = newText.split("\n")
+            val processedLines = lines.mapIndexed { index, line ->
+                if (formattedText.bulletLines.contains(index)) {
+                    if (!line.startsWith("• ")) "• $line" else line
+                } else {
+                    if (line.startsWith("• ")) line.substring(2) else line
+                }
+            }
+            val processedText = processedLines.joinToString("\n")
+            
+            textFieldValue = TextFieldValue(
+                text = processedText,
+                selection = selection
+            )
+            formattedText = formattedText.copy(text = processedText)
+        }
+        
+        onValueChange(textFieldValue.text)
+        onFormattedValueChange(textFieldValue.text)
+    }
+
+    // Функция для переключения форматирования
+    fun toggleFormatting(isBold: Boolean) {
+        val selection = textFieldValue.selection
+        if (!selection.collapsed) {
+            val newStyle = if (isBold) {
+                currentStyle.copy(isBold = !currentStyle.isBold)
+            } else {
+                currentStyle.copy(isItalic = !currentStyle.isItalic)
+            }
+            
+            val newStyles = formattedText.styles.toMutableList()
+            newStyles.add(TextStyleRange(newStyle, selection.start, selection.end))
+            
+            formattedText = formattedText.copy(styles = newStyles)
+            currentStyle = newStyle
         }
     }
 
-    fun handleEnterInBulletList(text: String, cursorPosition: Int): Pair<String, Int> {
-        val lineStart = getCurrentLineStart(text, cursorPosition)
-        val lineEnd = getCurrentLineEnd(text, cursorPosition)
-        val currentLine = text.substring(lineStart, lineEnd)
-        val trimmedLine = currentLine.trimStart()
+    // Функция для переключения маркированного списка
+    fun toggleBulletList() {
+        val text = textFieldValue.text
+        val selection = textFieldValue.selection
+        val cursorPosition = selection.start
         
-        return if (trimmedLine == "• " || trimmedLine.isEmpty()) {
-            // Если строка пустая или содержит только маркер, удаляем маркер
-            val newText = text.substring(0, lineStart) + "\n" + text.substring(lineEnd)
-            val newPosition = lineStart + 1
-            isBulletPoint = false
-            Pair(newText, newPosition)
+        // Находим текущую строку
+        val beforeCursor = text.substring(0, cursorPosition)
+        val lastNewLine = beforeCursor.lastIndexOf("\n")
+        val lineStart = if (lastNewLine == -1) 0 else lastNewLine + 1
+        val currentLine = beforeCursor.count { it == '\n' }
+        
+        // Проверяем, есть ли уже маркер в текущей строке
+        val currentLineText = text.substring(lineStart).split("\n").first()
+        val hasBullet = currentLineText.startsWith("• ")
+        
+        if (hasBullet) {
+            // Если маркер есть, удаляем его
+            val newText = text.substring(0, lineStart) + currentLineText.substring(2) + text.substring(lineStart + currentLineText.length)
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(cursorPosition - 2)
+            )
+            formattedText = formattedText.copy(
+                text = newText,
+                bulletLines = formattedText.bulletLines - currentLine
+            )
+            currentStyle = currentStyle.copy(isBulletList = false)
         } else {
-            // Добавляем новую строку с маркером
-            val leadingSpaces = currentLine.substring(0, currentLine.length - trimmedLine.length)
-            val newText = text.substring(0, lineEnd) + "\n" + leadingSpaces + "• "
-            val newPosition = lineEnd + 3 + leadingSpaces.length
-            Pair(newText, newPosition)
+            // Если маркера нет, добавляем его
+            val newText = text.substring(0, lineStart) + "• " + text.substring(lineStart)
+            textFieldValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(cursorPosition + 2)
+            )
+            formattedText = formattedText.copy(
+                text = newText,
+                bulletLines = formattedText.bulletLines + currentLine
+            )
+            currentStyle = currentStyle.copy(isBulletList = true)
         }
+        
+        onValueChange(textFieldValue.text)
+        onFormattedValueChange(textFieldValue.text)
     }
 
     Column(modifier = modifier) {
-        // Панель инструментов форматирования
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -106,169 +225,119 @@ fun RichTextEditor(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             IconButton(
-                onClick = { 
-                    isBold = !isBold
-                    val selection = textFieldValue.selection
-                    if (!selection.collapsed) {
-                        val beforeSelection = textFieldValue.text.substring(0, selection.start)
-                        val selectedText = textFieldValue.text.substring(selection.start, selection.end)
-                        val afterSelection = textFieldValue.text.substring(selection.end)
-                        val newText = beforeSelection + (if (isBold) "<b>$selectedText</b>" else selectedText) + afterSelection
-                        textFieldValue = TextFieldValue(
-                            text = newText,
-                            selection = TextRange(selection.start, selection.end + (if (isBold) 7 else -7))
-                        )
-                        onValueChange(newText)
-                        onFormattedValueChange(newText)
-                    }
-                },
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (isBold) MaterialTheme.colorScheme.primary else Color.Transparent
-                )
+                onClick = { toggleFormatting(true) }
             ) {
-                Icon(Icons.Default.FormatBold, stringResource(R.string.bold))
+                Icon(
+                    imageVector = Icons.Default.FormatBold,
+                    contentDescription = stringResource(R.string.bold),
+                    tint = if (currentStyle.isBold) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
             }
 
             IconButton(
-                onClick = { 
-                    isItalic = !isItalic
-                    val selection = textFieldValue.selection
-                    if (!selection.collapsed) {
-                        val beforeSelection = textFieldValue.text.substring(0, selection.start)
-                        val selectedText = textFieldValue.text.substring(selection.start, selection.end)
-                        val afterSelection = textFieldValue.text.substring(selection.end)
-                        val newText = beforeSelection + (if (isItalic) "<i>$selectedText</i>" else selectedText) + afterSelection
-                        textFieldValue = TextFieldValue(
-                            text = newText,
-                            selection = TextRange(selection.start, selection.end + (if (isItalic) 7 else -7))
-                        )
-                        onValueChange(newText)
-                        onFormattedValueChange(newText)
-                    }
-                },
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (isItalic) MaterialTheme.colorScheme.primary else Color.Transparent
-                )
+                onClick = { toggleFormatting(false) }
             ) {
-                Icon(Icons.Default.FormatItalic, stringResource(R.string.italic))
+                Icon(
+                    imageVector = Icons.Default.FormatItalic,
+                    contentDescription = stringResource(R.string.italic),
+                    tint = if (currentStyle.isItalic) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
             }
 
             IconButton(
-                onClick = { 
-                    val cursorPosition = textFieldValue.selection.start
-                    val (newText, newPosition) = toggleBulletForCurrentLine(textFieldValue.text, cursorPosition)
-                    textFieldValue = TextFieldValue(
-                        text = newText,
-                        selection = TextRange(newPosition)
-                    )
-                    isBulletPoint = !isBulletPoint
-                    onValueChange(newText)
-                    onFormattedValueChange(newText)
-                },
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = if (isBulletPoint) MaterialTheme.colorScheme.primary else Color.Transparent
-                )
+                onClick = { toggleBulletList() }
             ) {
-                Icon(Icons.Default.FormatListBulleted, stringResource(R.string.bullet_list))
+                Icon(
+                    imageVector = Icons.Default.FormatListBulleted,
+                    contentDescription = stringResource(R.string.bullet_list),
+                    tint = if (currentStyle.isBulletList) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                )
             }
 
-            IconButton(onClick = { showColorPicker = true }) {
-                Icon(Icons.Default.Palette, stringResource(R.string.text_color))
+            IconButton(
+                onClick = { showColorPicker = true }
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ColorLens,
+                    contentDescription = stringResource(R.string.text_color),
+                    tint = textColor
+                )
             }
         }
 
-        // Поле для ввода текста
-        BasicTextField(
-            value = textFieldValue,
-            onValueChange = { newValue ->
-                val oldText = textFieldValue.text
-                val newText = newValue.text
-                val cursorPosition = newValue.selection.start
-                
-                // Проверяем, был ли нажат Enter
-                if (isBulletPoint && 
-                    newText.length > oldText.length && 
-                    newText.endsWith("\n") &&
-                    isCurrentLineBulleted(oldText, cursorPosition - 1)
-                ) {
-                    val (processedText, newPosition) = handleEnterInBulletList(oldText, cursorPosition - 1)
-                    textFieldValue = TextFieldValue(
-                        text = processedText,
-                        selection = TextRange(newPosition)
-                    )
-                } else {
-                    textFieldValue = newValue
-                }
-                
-                onValueChange(textFieldValue.text)
-                onFormattedValueChange(textFieldValue.text)
-            },
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            textStyle = TextStyle(
-                color = textColor,
-                fontSize = 16.sp
-            ),
-            decorationBox = { innerTextField ->
-                Box {
-                    if (textFieldValue.text.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.note_content_hint),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                    }
-                    innerTextField()
+                .weight(1f)
+                .padding(8.dp)
+        ) {
+            val annotatedText = buildAnnotatedString {
+                append(formattedText.text)
+                formattedText.styles.forEach { styleRange ->
+                    addStyle(
+                        SpanStyle(
+                            fontWeight = if (styleRange.style.isBold) FontWeight.Bold else FontWeight.Normal,
+                            fontStyle = if (styleRange.style.isItalic) FontStyle.Italic else FontStyle.Normal
+                        ),
+                        styleRange.start,
+                        styleRange.end
+                    )
                 }
             }
-        )
 
-        if (showColorPicker) {
-            AlertDialog(
-                onDismissRequest = { showColorPicker = false },
-                title = { Text(stringResource(R.string.choose_color)) },
-                text = {
-                    Column {
-                        listOf(
-                            Color.Black,
-                            Color.Red,
-                            Color.Blue,
-                            Color.Green,
-                            Color.Gray
-                        ).forEach { color ->
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(48.dp)
-                                    .padding(4.dp),
-                                color = color,
-                                onClick = {
-                                    val selection = textFieldValue.selection
-                                    if (!selection.collapsed) {
-                                        val beforeSelection = textFieldValue.text.substring(0, selection.start)
-                                        val selectedText = textFieldValue.text.substring(selection.start, selection.end)
-                                        val afterSelection = textFieldValue.text.substring(selection.end)
-                                        val colorHex = String.format("#%06X", 0xFFFFFF and color.toArgb())
-                                        val newText = beforeSelection + 
-                                            "<font color='$colorHex'>$selectedText</font>" + 
-                                            afterSelection
-                                        textFieldValue = TextFieldValue(
-                                            text = newText,
-                                            selection = TextRange(selection.start, selection.end + 23 + colorHex.length)
-                                        )
-                                        onValueChange(newText)
-                                        onFormattedValueChange(newText)
-                                    } else {
-                                        onTextColorChange(color)
-                                    }
-                                    showColorPicker = false
-                                }
-                            ) {}
-                        }
+            BasicTextField(
+                value = textFieldValue,
+                onValueChange = { handleTextInput(it) },
+                textStyle = TextStyle(
+                    color = Color.Transparent,
+                    fontSize = 16.sp
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                modifier = Modifier.fillMaxWidth(),
+                decorationBox = { innerTextField ->
+                    Box {
+                        Text(
+                            text = annotatedText,
+                            style = TextStyle(
+                                color = textColor,
+                                fontSize = 16.sp
+                            )
+                        )
+                        innerTextField()
                     }
-                },
-                confirmButton = {}
+                }
             )
         }
+    }
+
+    if (showColorPicker) {
+        AlertDialog(
+            onDismissRequest = { showColorPicker = false },
+            title = { Text(stringResource(R.string.choose_color)) },
+            text = {
+                Column {
+                    listOf(
+                        Color.Black,
+                        Color.Red,
+                        Color.Blue,
+                        Color.Green,
+                        Color.Gray
+                    ).forEach { color ->
+                        Surface(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .padding(4.dp)
+                                .clickable {
+                                    onTextColorChange(color)
+                                    showColorPicker = false
+                                },
+                            color = color
+                        ) {}
+                    }
+                }
+            },
+            confirmButton = {}
+        )
     }
 } 

@@ -1,6 +1,7 @@
 package com.example.mynotes
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -25,12 +26,18 @@ class MainActivity : ComponentActivity() {
     private val settingsViewModel: SettingsViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e("MainActivity", "Uncaught exception in thread $thread", throwable)
+        }
+
         super.onCreate(savedInstanceState)
+        Log.d("MainActivity", "Starting MainActivity onCreate")
+            
         setContent {
             val settings by settingsViewModel.settings.collectAsState()
             val navController = rememberNavController()
             val noteViewModel: NoteViewModel = hiltViewModel()
-            
+                
             MyNotesTheme(
                 darkTheme = settings.isDarkTheme
             ) {
@@ -46,5 +53,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+            
+        Log.d("MainActivity", "MainActivity onCreate completed")
     }
 }

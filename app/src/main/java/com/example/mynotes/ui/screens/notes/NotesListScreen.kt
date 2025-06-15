@@ -24,6 +24,12 @@ import androidx.compose.foundation.layout.Spacer
 import com.example.mynotes.ui.navigation.Screen
 import androidx.compose.ui.res.stringResource
 import com.example.mynotes.R
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.AnnotatedString
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,8 +81,8 @@ fun NotesListScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .padding(padding)
-                    .fillMaxSize(),
+                    .fillMaxSize()
+                    .padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
@@ -94,8 +100,53 @@ fun NotesListScreen(
     }
 }
 
+fun parseFormattedText(text: String): AnnotatedString {
+    return buildAnnotatedString {
+        var currentIndex = 0
+        var isInBold = false
+        var isInItalic = false
+        
+        while (currentIndex < text.length) {
+            when {
+                text.substring(currentIndex).startsWith("<b>") -> {
+                    isInBold = true
+                    currentIndex += 3
+                }
+                text.substring(currentIndex).startsWith("</b>") -> {
+                    isInBold = false
+                    currentIndex += 4
+                }
+                text.substring(currentIndex).startsWith("<i>") -> {
+                    isInItalic = true
+                    currentIndex += 3
+                }
+                text.substring(currentIndex).startsWith("</i>") -> {
+                    isInItalic = false
+                    currentIndex += 4
+                }
+                text.substring(currentIndex).startsWith("• ") -> {
+                    withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+                        append("• ")
+                    }
+                    currentIndex += 2
+                }
+                else -> {
+                    val style = SpanStyle(
+                        fontWeight = if (isInBold) FontWeight.Bold else FontWeight.Normal,
+                        fontStyle = if (isInItalic) FontStyle.Italic else FontStyle.Normal
+                    )
+                    withStyle(style) {
+                        append(text[currentIndex])
+                    }
+                    currentIndex++
+                }
+            }
+        }
+    }
+}
+
 @Composable
-fun NoteItem(
+private fun NoteItem(
     note: Note,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -130,7 +181,7 @@ fun NoteItem(
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = note.content.take(100) + if (note.content.length > 100) "..." else "",
+                text = parseFormattedText(note.content.take(100) + if (note.content.length > 100) "..." else ""),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(note.textColor)
             )

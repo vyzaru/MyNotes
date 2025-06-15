@@ -1,5 +1,6 @@
 package com.example.mynotes.data.database
 
+import android.database.Cursor
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
@@ -13,9 +14,9 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(database: SupportSQLiteDatabase) {
         // Миграция для таблицы notes
         // Получаем информацию о существующих колонках
-        val cursor = database.query("SELECT * FROM notes LIMIT 1")
-        val columnNames = cursor.columnNames.toList()
-        cursor.close()
+        val cursor1 = database.query("SELECT * FROM notes LIMIT 1")
+        val columnNames = cursor1.columnNames.toList()
+        cursor1.close()
 
         // Создаем временную таблицу с новой схемой
         database.execSQL("""
@@ -97,7 +98,7 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
             CREATE TABLE IF NOT EXISTS app_settings (
                 id INTEGER PRIMARY KEY NOT NULL DEFAULT 0,
                 isDarkTheme INTEGER NOT NULL DEFAULT 0,
-                selectedFontFamily TEXT NOT NULL DEFAULT 'sans-serif',
+                selectedFontFamily TEXT NOT NULL DEFAULT 'Roboto',
                 fontSize REAL NOT NULL DEFAULT 16.0
             )
         """)
@@ -105,8 +106,19 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
         // Вставляем значения по умолчанию, если таблица пуста
         database.execSQL("""
             INSERT OR IGNORE INTO app_settings (id, isDarkTheme, selectedFontFamily, fontSize)
-            VALUES (0, 0, 'sans-serif', 16.0)
+            VALUES (0, 0, 'Roboto', 16.0)
         """)
+
+        // Проверяем, есть ли запись в таблице настроек
+        val cursor2 = database.query("SELECT COUNT(*) FROM app_settings")
+        if (cursor2.moveToFirst() && cursor2.getInt(0) == 0) {
+            // Если записи нет, вставляем значения по умолчанию
+            database.execSQL("""
+                INSERT INTO app_settings (id, isDarkTheme, selectedFontFamily, fontSize)
+                VALUES (0, 0, 'Roboto', 16.0)
+            """)
+        }
+        cursor2.close()
     }
 }
 

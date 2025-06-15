@@ -1,19 +1,43 @@
 package com.example.mynotes.data.database
 
-import android.app.Application
+import android.content.Context
 import androidx.room.Room
+import com.example.mynotes.data.database.dao.NoteDao
 import com.example.mynotes.data.repository.NoteRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
 
+@Module
+@InstallIn(SingletonComponent::class)
 object DatabaseModule {
-    fun provideDatabase(application: Application): AppDatabase {
+    @Provides
+    @Singleton
+    fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(
-            application,
+            context,
             AppDatabase::class.java,
             "notes_db"
-        ).build()
+        )
+        .addMigrations(*AppDatabase.migrations)
+        .build()
     }
 
-    fun provideNoteRepository(database: AppDatabase): NoteRepository {
-        return NoteRepository(database.noteDao())
+    @Provides
+    @Singleton
+    fun provideNoteDao(database: AppDatabase): NoteDao {
+        return database.noteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideNoteRepository(
+        @ApplicationContext context: Context,
+        noteDao: NoteDao
+    ): NoteRepository {
+        return NoteRepository(context, noteDao)
     }
 }

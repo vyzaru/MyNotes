@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">My Notes</string>
+    <string name="app_name">MyNotes</string>
     <string name="new_note">New Note</string>
     <string name="edit_note">Edit Note</string>
     <string name="title_hint">Title</string>
     <string name="content_hint">Content</string>
-    <string name="note_content_hint">Enter your note here...</string>
+    <string name="note_content_hint">Введите текст заметки...</string>
     <string name="save">Save</string>
     <string name="delete">Delete</string>
     <string name="delete_note">Delete Note</string>
@@ -22,11 +22,11 @@
     <string name="schedule">Schedule</string>
     <string name="scheduled_for">Scheduled for: %s</string>
     <string name="notes_for_date">Notes for %s</string>
-    <string name="bold">Bold</string>
-    <string name="italic">Italic</string>
-    <string name="bullet_list">List</string>
-    <string name="text_color">Text Color</string>
-    <string name="choose_color">Choose text color</string>
+    <string name="bold">Жирный</string>
+    <string name="italic">Курсив</string>
+    <string name="bullet_list">Маркированный список</string>
+    <string name="text_color">Цвет текста</string>
+    <string name="choose_color">Выберите цвет</string>
     <string name="choose_date">Choose date</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
