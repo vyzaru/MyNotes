@@ -366,7 +366,7 @@ fun RichTextEditor(
                         else -> FontFamily.Default
                     }
                 ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 modifier = Modifier.fillMaxWidth(),
                 decorationBox = { innerTextField ->
                     Box {
