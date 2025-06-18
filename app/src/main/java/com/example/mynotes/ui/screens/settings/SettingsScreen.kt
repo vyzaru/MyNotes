@@ -1,15 +1,19 @@
 package com.example.mynotes.ui.screens.settings
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -18,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -56,61 +61,118 @@ fun SettingsScreen(
             modifier = Modifier
                 .padding(padding)
                 .padding(16.dp)
+                .fillMaxWidth()
         ) {
             // Dark Theme Switch
-            Row(
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.surface,
+                onClick = { viewModel.toggleDarkTheme(!settings.isDarkTheme) }
             ) {
-                Text(
-                    text = stringResource(R.string.dark_theme),
-                    modifier = Modifier.weight(1f)
-                )
-                Switch(
-                    checked = settings.isDarkTheme,
-                    onCheckedChange = { viewModel.toggleDarkTheme(it) }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Font Selection
-            Text(
-                text = stringResource(R.string.font),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                listOf("Roboto", "Cursive").forEach { font ->
-                    FilterChip(
-                        selected = settings.selectedFontFamily == font,
-                        onClick = { viewModel.updateFont(font) },
-                        label = { Text(font) },
-                        modifier = Modifier.weight(1f)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = stringResource(R.string.dark_theme),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(
+                        checked = settings.isDarkTheme,
+                        onCheckedChange = { viewModel.toggleDarkTheme(it) }
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Font Selection
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.font),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        listOf("Roboto", "Cursive").forEach { font ->
+                            Surface(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                color = if (settings.selectedFontFamily == font)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surface,
+                                onClick = { viewModel.updateFont(font) }
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(horizontal = 16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = font,
+                                        color = if (settings.selectedFontFamily == font)
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        else
+                                            MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Font Size Slider
-            Text(
-                text = stringResource(R.string.font_size, settings.fontSize.toInt()),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Slider(
-                value = settings.fontSize,
-                onValueChange = { viewModel.updateFontSize(it) },
-                valueRange = 12f..24f,
-                steps = 12,
-                modifier = Modifier.padding(horizontal = 8.dp)
-            )
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.font_size, settings.fontSize.toInt()),
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                    Slider(
+                        value = settings.fontSize,
+                        onValueChange = { viewModel.updateFontSize(it) },
+                        valueRange = 12f..24f,
+                        steps = 12,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    )
+                }
+            }
         }
     }
 }

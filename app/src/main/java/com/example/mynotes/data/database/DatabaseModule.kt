@@ -3,6 +3,7 @@ package com.example.mynotes.data.database
 import android.content.Context
 import androidx.room.Room
 import com.example.mynotes.data.database.dao.NoteDao
+import com.example.mynotes.data.database.dao.SettingsDao
 import com.example.mynotes.data.repository.NoteRepository
 import dagger.Module
 import dagger.Provides
@@ -30,6 +31,12 @@ object DatabaseModule {
     @Singleton
     fun provideNoteDao(database: AppDatabase): NoteDao {
         return database.noteDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideSettingsDao(database: AppDatabase): SettingsDao {
+        return database.settingsDao()
     }
 
     @Provides

@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.room.Room
 import com.example.mynotes.data.database.AppDatabase
 import com.example.mynotes.data.database.MIGRATION_1_2
-import com.example.mynotes.data.database.dao.SettingsDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,8 +14,5 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
-    @Provides
-    fun provideSettingsDao(database: AppDatabase): SettingsDao {
-        return database.settingsDao()
-    }
+    // Здесь могут быть другие провайдеры, если они понадобятся
 }

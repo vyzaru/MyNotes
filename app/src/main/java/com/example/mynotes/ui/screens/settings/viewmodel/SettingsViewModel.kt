@@ -1,5 +1,6 @@
 package com.example.mynotes.ui.screens.settings.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mynotes.data.models.AppSettings
@@ -24,20 +25,38 @@ class SettingsViewModel @Inject constructor(
         )
 
     fun toggleDarkTheme(isDark: Boolean) {
+        Log.d("SettingsViewModel", "Toggling dark theme to: $isDark")
         viewModelScope.launch {
-            repository.updateSettings(settings.value.copy(isDarkTheme = isDark))
+            try {
+                repository.updateSettings(settings.value.copy(isDarkTheme = isDark))
+                Log.d("SettingsViewModel", "Dark theme updated successfully")
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Error updating dark theme", e)
+            }
         }
     }
 
     fun updateFont(font: String) {
+        Log.d("SettingsViewModel", "Updating font to: $font")
         viewModelScope.launch {
-            repository.updateSettings(settings.value.copy(selectedFontFamily = font))
+            try {
+                repository.updateSettings(settings.value.copy(selectedFontFamily = font))
+                Log.d("SettingsViewModel", "Font updated successfully")
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Error updating font", e)
+            }
         }
     }
 
     fun updateFontSize(size: Float) {
+        Log.d("SettingsViewModel", "Updating font size to: $size")
         viewModelScope.launch {
-            repository.updateSettings(settings.value.copy(fontSize = size))
+            try {
+                repository.updateSettings(settings.value.copy(fontSize = size))
+                Log.d("SettingsViewModel", "Font size updated successfully")
+            } catch (e: Exception) {
+                Log.e("SettingsViewModel", "Error updating font size", e)
+            }
         }
     }
 }
